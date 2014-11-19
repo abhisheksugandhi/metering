@@ -1,0 +1,25 @@
+development:
+  username: xxxx
+  password: xxxx
+  url: http://localhost:8080/soap
+
+test:
+  username: xxxx
+  password: xxxx
+  url: http://localhost:8080/soap
+
+production:
+  username: xxxx
+  password: xxxx
+  url: http://localhost:8080/soap
+
+staging:
+  username: xxxx
+  password: xxxx
+  url: http://localhost:8080/soap
+
+acceptance:
+  username: xxxx
+  password: xxxx
+  url: http://localhost:8080/soap
+

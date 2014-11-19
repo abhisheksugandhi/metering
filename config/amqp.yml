@@ -1,0 +1,30 @@
+development:
+  host: 127.0.0.1
+  port: 8082
+  username: guest
+  password: guest
+test:
+  host: 127.0.0.1
+  port: 5672
+  username: guest
+  password: guest
+ci:
+  host: 127.0.0.1
+  port: 5672
+  username: guest
+  password: guest
+acceptance:
+  host: 127.0.0.1
+  port: 5672
+  username: guest
+  password: guest
+staging:
+  host: 127.0.0.1
+  port: 5672
+  username: guest
+  password: guest
+production:
+  host: 127.0.0.1
+  port: 5672
+  username: guest
+  password: guest
