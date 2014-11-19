@@ -17,6 +17,10 @@ func init_fleet_manager() {
 	}
 }
 
+func set_db_object(mock_db *sql.DB) {
+	dbObject = mock_db
+}
+
 func get_fleet_mapping() map[string]int {
 	mapping := make(map[string]int)
 	rows, err := dbObject.Query("select xid, verifone_fleet_code from fleets")
