@@ -5,40 +5,26 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"github.com/streadway/amqp"
 	"log"
-	"time"
 )
 
-var (
-	uri          = flag.String("uri", "amqp://guest:guest@127.0.0.1:8082/", "AMQP URI")
-	exchange     = flag.String("exchange", "", "Durable, non-auto-deleted AMQP exchange name")
-	exchangeType = flag.String("exchange-type", "direct", "Exchange type - direct|fanout|topic|x-custom")
-	queue        = flag.String("queue", "elroy.ana.v0", "Ephemeral AMQP queue name")
-	bindingKey   = flag.String("key", "elroy.ana.v0", "AMQP binding key")
-	consumerTag  = flag.String("consumer-tag", "ana-consumer", "AMQP consumer tag (should not be blank)")
-	lifetime     = flag.Duration("lifetime", 60*time.Second, "lifetime of process before shutdown (0s=infinite)")
-)
+func init_amqp_subscriber() {
+	amqp_config := get_amqp_config()
+	amqp_uri := fmt.Sprintf("amqp://%s:%s@%s:%d/", amqp_config.UserName, amqp_config.Password, amqp_config.Host, amqp_config.Port)
+	exchange := ""
+	exchangeType := "direct"
+	queue := "elroy.ana.v0";
+	consumer_tag := "ana-consumer"
 
-func init() {
-	flag.Parse()
-}
-
-func subscribe() {
-	c, err := NewConsumer(*uri, *exchange, *exchangeType, *queue, *bindingKey, *consumerTag)
+	c, err := NewConsumer(amqp_uri, exchange, exchangeType, queue, queue, consumer_tag)
 	if err != nil {
 		log.Fatalf("%s", err)
 	}
 
-	if *lifetime > 0 {
-		log.Printf("running for %s", *lifetime)
-		time.Sleep(*lifetime)
-	} else {
-		log.Printf("running forever")
-		select {}
-	}
+	log.Printf("running forever")
+	select { }
 
 	log.Printf("shutting down")
 
@@ -80,19 +66,6 @@ func NewConsumer(amqpURI, exchange, exchangeType, queueName, key, ctag string) (
 		return nil, fmt.Errorf("Channel: %s", err)
 	}
 
-	/*log.Printf("got Channel, declaring Exchange (%q)", exchange)
-	if err = c.channel.ExchangeDeclare(
-		exchange,     // name of the exchange
-		exchangeType, // type
-		true,         // durable
-		false,        // delete when complete
-		false,        // internal
-		false,        // noWait
-		nil,          // arguments
-	); err != nil {
-		return nil, fmt.Errorf("Exchange Declare: %s", err)
-	}*/
-
 	log.Printf("declared Exchange, declaring Queue %q", queueName)
 	queue, err := c.channel.QueueDeclare(
 		queueName, // name of the queue
@@ -108,16 +81,6 @@ func NewConsumer(amqpURI, exchange, exchangeType, queueName, key, ctag string) (
 
 	log.Printf("declared Queue (%q %d messages, %d consumers), binding to Exchange (key %q)",
 		queue.Name, queue.Messages, queue.Consumers, key)
-
-	/*if err = c.channel.QueueBind(
-		queue.Name, // name of the queue
-		key,        // bindingKey
-		exchange,   // sourceExchange
-		false,      // noWait
-		nil,        // arguments
-	); err != nil {
-		return nil, fmt.Errorf("Queue Bind: %s", err)
-	}*/
 
 	log.Printf("Queue bound to Exchange, starting Consume (consumer tag %q)", c.tag)
 	deliveries, err := c.channel.Consume(

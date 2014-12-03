@@ -9,6 +9,7 @@ func init_main() {
 	init_configs()
 	init_fleet_manager()
 	init_amqp_publisher()
+	init_amqp_subscriber()
 }
 
 func main() {
