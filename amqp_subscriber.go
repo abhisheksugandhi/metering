@@ -8,14 +8,18 @@ import (
 	"fmt"
 	"github.com/streadway/amqp"
 	"log"
+        "util"
 )
 
+var analytics_client util.AnalyticsClient = util.AnalyticsClient{};
+
 func init_amqp_subscriber() {
+        analytics_client.Init("http://localhost:8085/printEvents");
 	amqp_config := get_amqp_config()
 	amqp_uri := fmt.Sprintf("amqp://%s:%s@%s:%d/", amqp_config.UserName, amqp_config.Password, amqp_config.Host, amqp_config.Port)
 	exchange := ""
 	exchangeType := "direct"
-	queue := "elroy.ana.v0";
+	queue := "elroy.analytics.v0";
 	consumer_tag := "ana-consumer"
 
 	c, err := NewConsumer(amqp_uri, exchange, exchangeType, queue, queue, consumer_tag)
@@ -117,15 +121,12 @@ func (c *Consumer) Shutdown() error {
 	return <-c.done
 }
 
+
 func handle(deliveries <-chan amqp.Delivery, done chan error) {
 	for d := range deliveries {
-		log.Printf(
-			"got %dB delivery: [%v] %q",
-			len(d.Body),
-			d.DeliveryTag,
-			d.Body,
-		)
+		log.Printf("got event of length %d: %q", len(d.Body), d.Body)
 		d.Ack(false)
+		analytics_client.Call(d.Body)
 	}
 	log.Printf("handle: deliveries channel closed")
 	done <- nil
