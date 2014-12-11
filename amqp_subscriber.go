@@ -8,30 +8,27 @@ import (
 	"fmt"
 	"github.com/streadway/amqp"
 	"log"
-        "util"
+	"util"
 )
 
-var analytics_client util.AnalyticsClient = util.AnalyticsClient{};
+var analytics_client util.AnalyticsClient = util.AnalyticsClient{}
+var dm_client util.GDMClient = util.GDMClient{}
 
 func init_amqp_subscriber() {
-        analytics_client.Init("http://localhost:8085/printEvents");
+	analytics_client.Init("http://localhost:8085/printEvents")
 	amqp_config := get_amqp_config()
 	amqp_uri := fmt.Sprintf("amqp://%s:%s@%s:%d/", amqp_config.UserName, amqp_config.Password, amqp_config.Host, amqp_config.Port)
-	exchange := ""
-	exchangeType := "direct"
-	queue := "elroy.analytics.v0";
-	consumer_tag := "ana-consumer"
+	dm_client.Init("http://localhost:8085/test_distance", amqp_uri)
 
-	c, err := NewConsumer(amqp_uri, exchange, exchangeType, queue, queue, consumer_tag)
+	c, err := subscribe_to_queues(amqp_uri)
 	if err != nil {
 		log.Fatalf("%s", err)
 	}
 
 	log.Printf("running forever")
-	select { }
+	select {}
 
 	log.Printf("shutting down")
-
 	if err := c.Shutdown(); err != nil {
 		log.Fatalf("error during shutdown: %s", err)
 	}
@@ -44,11 +41,11 @@ type Consumer struct {
 	done    chan error
 }
 
-func NewConsumer(amqpURI, exchange, exchangeType, queueName, key, ctag string) (*Consumer, error) {
+func subscribe_to_queues(amqpURI string) (*Consumer, error) {
 	c := &Consumer{
 		conn:    nil,
 		channel: nil,
-		tag:     ctag,
+		tag:     "",
 		done:    make(chan error),
 	}
 
@@ -70,6 +67,7 @@ func NewConsumer(amqpURI, exchange, exchangeType, queueName, key, ctag string) (
 		return nil, fmt.Errorf("Channel: %s", err)
 	}
 
+	queueName := "elroy.analytics.v0"
 	log.Printf("declared Exchange, declaring Queue %q", queueName)
 	queue, err := c.channel.QueueDeclare(
 		queueName, // name of the queue
@@ -84,10 +82,10 @@ func NewConsumer(amqpURI, exchange, exchangeType, queueName, key, ctag string) (
 	}
 
 	log.Printf("declared Queue (%q %d messages, %d consumers), binding to Exchange (key %q)",
-		queue.Name, queue.Messages, queue.Consumers, key)
+		queue.Name, queue.Messages, queue.Consumers, queue.Name)
 
 	log.Printf("Queue bound to Exchange, starting Consume (consumer tag %q)", c.tag)
-	deliveries, err := c.channel.Consume(
+	analytic_deliveries, err := c.channel.Consume(
 		queue.Name, // name
 		c.tag,      // consumerTag,
 		false,      // noAck
@@ -100,7 +98,39 @@ func NewConsumer(amqpURI, exchange, exchangeType, queueName, key, ctag string) (
 		return nil, fmt.Errorf("Queue Consume: %s", err)
 	}
 
-	go handle(deliveries, c.done)
+	go handle_analytics(analytic_deliveries, c.done)
+
+	queueName = "elroy.eta.v0"
+	queue, err = c.channel.QueueDeclare(
+		queueName, // name of the queue
+		true,      // durable
+		false,     // delete when usused
+		false,     // exclusive
+		false,     // noWait
+		nil,       // arguments
+	)
+	if err != nil {
+		return nil, fmt.Errorf("Queue Declare: %s", err)
+	}
+
+	log.Printf("declared Queue (%q %d messages, %d consumers), binding to Exchange (key %q)",
+		queue.Name, queue.Messages, queue.Consumers, queue.Name)
+
+	log.Printf("Queue bound to Exchange, starting Consume (consumer tag %q)", c.tag)
+	eta_deliveries, err := c.channel.Consume(
+		queue.Name, // name
+		c.tag,      // consumerTag,
+		false,      // noAck
+		false,      // exclusive
+		false,      // noLocal
+		false,      // noWait
+		nil,        // arguments
+	)
+	if err != nil {
+		return nil, fmt.Errorf("Queue Consume: %s", err)
+	}
+
+	go handle_eta(eta_deliveries, c.done)
 
 	return c, nil
 }
@@ -121,12 +151,21 @@ func (c *Consumer) Shutdown() error {
 	return <-c.done
 }
 
-
-func handle(deliveries <-chan amqp.Delivery, done chan error) {
+func handle_analytics(deliveries <-chan amqp.Delivery, done chan error) {
 	for d := range deliveries {
 		log.Printf("got event of length %d: %q", len(d.Body), d.Body)
-		d.Ack(false)
 		analytics_client.Call(d.Body)
+		d.Ack(false)
+	}
+	log.Printf("handle: deliveries channel closed")
+	done <- nil
+}
+
+func handle_eta(deliveries <-chan amqp.Delivery, done chan error) {
+	for d := range deliveries {
+		log.Printf("got event of length %d: %q", len(d.Body), d.Body)
+		dm_client.GetDM(d.Body, d.ReplyTo, d.MessageId, d.CorrelationId)
+		d.Ack(false)
 	}
 	log.Printf("handle: deliveries channel closed")
 	done <- nil
