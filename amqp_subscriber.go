@@ -153,9 +153,9 @@ func (c *Consumer) Shutdown() error {
 
 func handle_analytics(deliveries <-chan amqp.Delivery, done chan error) {
 	for d := range deliveries {
+		d.Ack(false)
 		log.Printf("got event of length %d: %q", len(d.Body), d.Body)
 		analytics_client.Call(d.Body)
-		d.Ack(false)
 	}
 	log.Printf("handle: deliveries channel closed")
 	done <- nil
@@ -163,9 +163,9 @@ func handle_analytics(deliveries <-chan amqp.Delivery, done chan error) {
 
 func handle_eta(deliveries <-chan amqp.Delivery, done chan error) {
 	for d := range deliveries {
+		d.Ack(false)
 		log.Printf("got event of length %d: %q", len(d.Body), d.Body)
 		dm_client.GetDM(d.Body, d.ReplyTo, d.MessageId, d.CorrelationId)
-		d.Ack(false)
 	}
 	log.Printf("handle: deliveries channel closed")
 	done <- nil

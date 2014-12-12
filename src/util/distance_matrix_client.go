@@ -16,8 +16,8 @@ type GDMClient struct {
 
 type GDMClientRequest struct {
 	Id           int64
-	Origin       Location
-	Destinations []Location
+	Origin       string
+	Destinations string
 }
 
 type Location struct {
@@ -75,18 +75,9 @@ func (a *GDMClient) GetDM(data []byte, replyTo string, messageId string, correla
 		panic(err)
 	}
 
-	var destinationQueryParams bytes.Buffer
-	destinationQueryParams.WriteString("")
-	for _, destination := range inreq.Destinations {
-		if destinationQueryParams.Len() > 0 {
-			destinationQueryParams.WriteString("|")
-		}
-		destinationQueryParams.WriteString(fmt.Sprintf("%f,%f", destination.Lat, destination.Lon))
-	}
-
 	var queryParams bytes.Buffer
-	queryParams.WriteString(fmt.Sprintf("origins=%f,%f", inreq.Origin.Lat, inreq.Origin.Lon))
-	queryParams.WriteString(fmt.Sprintf("&destinations=%s", destinationQueryParams.String()))
+	queryParams.WriteString(fmt.Sprintf("origins=%s", inreq.Origin))
+	queryParams.WriteString(fmt.Sprintf("&destinations=%s", inreq.Destinations))
 
 	fmt.Println("calling server url " + fmt.Sprintf("%s?%s", a.url, queryParams.String()))
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s?%s", a.url, queryParams.String()), nil)
