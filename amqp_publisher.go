@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"github.com/streadway/amqp"
+	"log"
+	"time"
 )
 
 var amqpUri string
@@ -14,14 +16,17 @@ func init_amqp_publisher() {
 	amqpUri = fmt.Sprintf("amqp://%s:%s@%s:%d/", amqp_config.UserName, amqp_config.Password, amqp_config.Host, amqp_config.Port)
 	var err error
 	connection, err = amqp.Dial(amqpUri)
-	if err != nil {
-		panic(err)
+	if err == nil {
+		channel, err = connection.Channel()
 	}
-	defer connection.Close()
-	channel, err = connection.Channel()
-	if err != nil {
-		panic(err)
-	}
+
+	go func() {
+		var closedConnChannel = connection.NotifyClose(make(chan *amqp.Error))
+		closeErr := <-closedConnChannel
+		log.Printf("connection error %s,  attempting reconnect after 10 sec", closeErr)
+		time.Sleep(5 * time.Second)
+		init_amqp_publisher()
+	}()
 }
 
 func publish_amqp(routingKey string, message []byte) error {

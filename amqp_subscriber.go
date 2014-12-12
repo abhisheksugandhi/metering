@@ -9,6 +9,7 @@ import (
 	"github.com/streadway/amqp"
 	"log"
 	"util"
+	"time"
 )
 
 var analytics_client util.AnalyticsClient = util.AnalyticsClient{}
@@ -54,11 +55,15 @@ func subscribe_to_queues(amqpURI string) (*Consumer, error) {
 	log.Printf("dialing %q", amqpURI)
 	c.conn, err = amqp.Dial(amqpURI)
 	if err != nil {
-		return nil, fmt.Errorf("Dial: %s", err)
+		log.Printf("got error while dialing %s", err)
 	}
 
 	go func() {
-		fmt.Printf("closing: %s", <-c.conn.NotifyClose(make(chan *amqp.Error)))
+		var closedConnChannel = c.conn.NotifyClose(make(chan *amqp.Error))
+		closeErr := <-closedConnChannel
+		log.Printf("connection error %s,  attempting reconnect after 5 sec", closeErr)
+		time.Sleep(5 * time.Second)
+		subscribe_to_queues(amqpURI)
 	}()
 
 	log.Printf("got Connection, getting Channel")

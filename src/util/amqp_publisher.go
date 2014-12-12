@@ -3,6 +3,7 @@ package util
 import (
 	"fmt"
 	"github.com/streadway/amqp"
+	"time"
 )
 
 type AmqpPublisher struct {
@@ -12,16 +13,25 @@ type AmqpPublisher struct {
 
 func (publisher *AmqpPublisher) Init(amqpUri string) {
 	connection, err := amqp.Dial(amqpUri)
-	if err != nil {
-		panic(err)
+	if err == nil {
+		publisher.Connection = connection
 	}
-	publisher.Connection = connection
+
+	go func() {
+		var closedConnChannel = connection.NotifyClose(make(chan *amqp.Error))
+		closeErr := <-closedConnChannel
+		fmt.Printf("connection error %s,  attempting reconnect after 1 sec", closeErr)
+		time.Sleep(5 * time.Second)
+		publisher.Init(amqpUri)
+	}()
+
 }
 
 func (publisher *AmqpPublisher) Publish_Amqp(message []byte, routingKey string, messageId string, correlationId string) error {
 	channel, err1 := publisher.Connection.Channel()
 	if err1 != nil {
-		panic(err1)
+		fmt.Printf("got error while getting channel %s", err1)
+		return err1;
 	}
 	exchange := ""
 	fmt.Printf("publishing to queue %s message of length %d\n", routingKey, len(message))
