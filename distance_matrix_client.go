@@ -1,4 +1,4 @@
-package util
+package main
 
 import (
 	"bytes"
@@ -6,12 +6,16 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"flywheel/util"
+	"github.com/streadway/amqp"
+	"log"
 )
 
 type GDMClient struct {
 	url       string
 	client    http.Client
-	publisher AmqpPublisher
+	publisher util.AmqpPublisher
+	subsciber util.AmqpSubscriber
 }
 
 type GDMClientRequest struct {
@@ -67,6 +71,11 @@ func (a *GDMClient) Init(serverUrl string, amqpUri string) {
 	a.publisher.Init(amqpUri)
 }
 
+func (a *GDMClient) subscribe_to_queue(amqpUri string, queueName string) {
+	a.subsciber = util.AmqpSubscriber{}
+	a.subsciber.Init(amqpUri, queueName, a.handle_eta)  
+}
+
 func (a *GDMClient) GetDM(data []byte, replyTo string, messageId string, correlationId string) {
 	var inreq GDMClientRequest
 	err := json.Unmarshal(data, &inreq)
@@ -115,4 +124,25 @@ func (a *GDMClient) GetDM(data []byte, replyTo string, messageId string, correla
 	if err != nil {
 		fmt.Printf("Exchange Publish: %s", err1)
 	}
+}
+
+func (a *GDMClient) handle_eta(deliveries <-chan amqp.Delivery, done chan error) {
+	for d := range deliveries {
+		d.Ack(false)
+		log.Printf("got event of length %d: %q", len(d.Body), d.Body)
+		a.GetDM(d.Body, d.ReplyTo, d.MessageId, d.CorrelationId)
+	}
+	log.Printf("handle: deliveries channel closed")
+	done <- nil
+}
+
+func main() {
+	config := util.Config{}
+	config.Init()
+	amqp_config := config.AmqpConfig
+	amqp_uri := fmt.Sprintf("amqp://%s:%s@%s:%d/", amqp_config.UserName, amqp_config.Password, amqp_config.Host, amqp_config.Port)
+
+	dm_client := GDMClient{}
+	dm_client.Init("http://localhost:8085/test_distance", amqp_uri)
+	dm_client.subscribe_to_queue(amqp_uri, "elroy.eta.v0")
 }

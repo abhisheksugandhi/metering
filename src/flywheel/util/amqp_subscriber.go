@@ -2,29 +2,40 @@
 // binds the Queue to the Exchange with a binding key, and consumes every
 // message published to that Exchange with that routing key.
 //
-package main
+package util
 
 import (
 	"fmt"
 	"github.com/streadway/amqp"
 	"log"
-	"util"
 	"time"
 )
 
-var analytics_client util.AnalyticsClient = util.AnalyticsClient{}
-var dm_client util.GDMClient = util.GDMClient{}
+//var analytics_client util.AnalyticsClient = util.AnalyticsClient{}
+//var dm_client util.GDMClient = util.GDMClient{}
 
-func init_amqp_subscriber() {
-	analytics_client.Init("http://localhost:8085/printEvents")
-	amqp_config := get_amqp_config()
-	amqp_uri := fmt.Sprintf("amqp://%s:%s@%s:%d/", amqp_config.UserName, amqp_config.Password, amqp_config.Host, amqp_config.Port)
-	dm_client.Init("http://localhost:8085/test_distance", amqp_uri)
+type AmqpSubscriber struct {
+	amqp_uri string
+	queueName string
+	handlerFunction func(<-chan amqp.Delivery, chan error)
+	consumer *Consumer
+}
 
-	c, err := subscribe_to_queues(amqp_uri)
+func (subscriber *AmqpSubscriber) Init(amqpUri string, queueName string, handlerFunction func(<-chan amqp.Delivery, chan error)) {
+	subscriber.queueName = queueName
+	subscriber.handlerFunction = handlerFunction
+	subscriber.amqp_uri = amqpUri
+	subscriber.init_internal()
+} 
+
+func (subscriber *AmqpSubscriber) init_internal() {
+	//dm_client.Init("http://localhost:8085/test_distance", amqp_uri)
+
+	c, err := subscribe_to_queues(subscriber.amqp_uri, subscriber.queueName, subscriber.handlerFunction)
 	if err != nil {
 		log.Fatalf("%s", err)
 	}
+	subscriber.consumer = c
 
 	log.Printf("running forever")
 	select {}
@@ -42,7 +53,7 @@ type Consumer struct {
 	done    chan error
 }
 
-func subscribe_to_queues(amqpURI string) (*Consumer, error) {
+func subscribe_to_queues(amqpURI string, queueName string, handlerFunction func(<-chan amqp.Delivery, chan error)) (*Consumer, error) {
 	c := &Consumer{
 		conn:    nil,
 		channel: nil,
@@ -63,7 +74,7 @@ func subscribe_to_queues(amqpURI string) (*Consumer, error) {
 		closeErr := <-closedConnChannel
 		log.Printf("connection error %s,  attempting reconnect after 5 sec", closeErr)
 		time.Sleep(5 * time.Second)
-		subscribe_to_queues(amqpURI)
+		subscribe_to_queues(amqpURI, queueName, handlerFunction)
 	}()
 
 	log.Printf("got Connection, getting Channel")
@@ -72,7 +83,6 @@ func subscribe_to_queues(amqpURI string) (*Consumer, error) {
 		return nil, fmt.Errorf("Channel: %s", err)
 	}
 
-	queueName := "elroy.analytics.v0"
 	log.Printf("declared Exchange, declaring Queue %q", queueName)
 	queue, err := c.channel.QueueDeclare(
 		queueName, // name of the queue
@@ -85,9 +95,6 @@ func subscribe_to_queues(amqpURI string) (*Consumer, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Queue Declare: %s", err)
 	}
-
-	log.Printf("declared Queue (%q %d messages, %d consumers), binding to Exchange (key %q)",
-		queue.Name, queue.Messages, queue.Consumers, queue.Name)
 
 	log.Printf("Queue bound to Exchange, starting Consume (consumer tag %q)", c.tag)
 	analytic_deliveries, err := c.channel.Consume(
@@ -103,39 +110,7 @@ func subscribe_to_queues(amqpURI string) (*Consumer, error) {
 		return nil, fmt.Errorf("Queue Consume: %s", err)
 	}
 
-	go handle_analytics(analytic_deliveries, c.done)
-
-	queueName = "elroy.eta.v0"
-	queue, err = c.channel.QueueDeclare(
-		queueName, // name of the queue
-		true,      // durable
-		false,     // delete when usused
-		false,     // exclusive
-		false,     // noWait
-		nil,       // arguments
-	)
-	if err != nil {
-		return nil, fmt.Errorf("Queue Declare: %s", err)
-	}
-
-	log.Printf("declared Queue (%q %d messages, %d consumers), binding to Exchange (key %q)",
-		queue.Name, queue.Messages, queue.Consumers, queue.Name)
-
-	log.Printf("Queue bound to Exchange, starting Consume (consumer tag %q)", c.tag)
-	eta_deliveries, err := c.channel.Consume(
-		queue.Name, // name
-		c.tag,      // consumerTag,
-		false,      // noAck
-		false,      // exclusive
-		false,      // noLocal
-		false,      // noWait
-		nil,        // arguments
-	)
-	if err != nil {
-		return nil, fmt.Errorf("Queue Consume: %s", err)
-	}
-
-	go handle_eta(eta_deliveries, c.done)
+	go handlerFunction(analytic_deliveries, c.done)
 
 	return c, nil
 }
@@ -160,7 +135,7 @@ func handle_analytics(deliveries <-chan amqp.Delivery, done chan error) {
 	for d := range deliveries {
 		d.Ack(false)
 		log.Printf("got event of length %d: %q", len(d.Body), d.Body)
-		analytics_client.Call(d.Body)
+		//analytics_client.Call(d.Body)
 	}
 	log.Printf("handle: deliveries channel closed")
 	done <- nil
@@ -170,7 +145,7 @@ func handle_eta(deliveries <-chan amqp.Delivery, done chan error) {
 	for d := range deliveries {
 		d.Ack(false)
 		log.Printf("got event of length %d: %q", len(d.Body), d.Body)
-		dm_client.GetDM(d.Body, d.ReplyTo, d.MessageId, d.CorrelationId)
+		//dm_client.GetDM(d.Body, d.ReplyTo, d.MessageId, d.CorrelationId)
 	}
 	log.Printf("handle: deliveries channel closed")
 	done <- nil

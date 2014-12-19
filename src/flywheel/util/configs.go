@@ -1,4 +1,4 @@
-package main
+package util
 
 import (
 	"gopkg.in/yaml.v2"
@@ -27,9 +27,11 @@ type AmqpConfig struct {
 	Port     int
 }
 
-var dbConfig DbInfo
-var apiConfig VerifoneAPIConfig
-var amqpConfig AmqpConfig
+type Config struct {
+	DbConfig DbInfo
+	ApiConfig VerifoneAPIConfig
+	AmqpConfig AmqpConfig
+}
 
 func get_environment() string {
 	environment := os.Getenv("ENVIRONMENT")
@@ -39,7 +41,7 @@ func get_environment() string {
 	return environment
 }
 
-func init_db_config() {
+func (config *Config) init_db_config() {
 	data, err := ioutil.ReadFile("config/database.yml")
 	if err != nil {
 		panic(err)
@@ -47,10 +49,10 @@ func init_db_config() {
 
 	m := make(map[string]DbInfo)
 	err = yaml.Unmarshal(data, &m)
-	dbConfig = m[get_environment()]
+	config.DbConfig = m[get_environment()]
 }
 
-func init_api_config() {
+func (config *Config) init_api_config() {
 	data, err := ioutil.ReadFile("config/verifone_api_creds.yml")
 	if err != nil {
 		panic(err)
@@ -58,10 +60,10 @@ func init_api_config() {
 
 	m := make(map[string]VerifoneAPIConfig)
 	err = yaml.Unmarshal(data, &m)
-	apiConfig = m[get_environment()]
+	config.ApiConfig = m[get_environment()]
 }
 
-func init_amqp_config() {
+func (config *Config) init_amqp_config() {
 	data, err := ioutil.ReadFile("config/amqp.yml")
 	if err != nil {
 		panic(err)
@@ -69,23 +71,11 @@ func init_amqp_config() {
 
 	m := make(map[string]AmqpConfig)
 	err = yaml.Unmarshal(data, &m)
-	amqpConfig = m[get_environment()]
+	config.AmqpConfig = m[get_environment()]
 }
 
-func init_configs() {
-	init_db_config()
-	init_api_config()
-	init_amqp_config()
-}
-
-func get_db_config() DbInfo {
-	return dbConfig
-}
-
-func get_api_config() VerifoneAPIConfig {
-	return apiConfig
-}
-
-func get_amqp_config() AmqpConfig {
-	return amqpConfig
+func (config *Config) Init() {
+	config.init_db_config()
+	config.init_api_config()
+	config.init_amqp_config()
 }

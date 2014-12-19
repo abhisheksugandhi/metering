@@ -12,6 +12,7 @@ type AmqpPublisher struct {
 }
 
 func (publisher *AmqpPublisher) Init(amqpUri string) {
+	publisher.AmqpUri = amqpUri
 	connection, err := amqp.Dial(amqpUri)
 	if err == nil {
 		publisher.Connection = connection
