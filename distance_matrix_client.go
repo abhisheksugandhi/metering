@@ -3,12 +3,12 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"net/http"
 	"flywheel/util"
+	"fmt"
 	"github.com/streadway/amqp"
+	"io/ioutil"
 	"log"
+	"net/http"
 )
 
 type GDMClient struct {
@@ -73,7 +73,7 @@ func (a *GDMClient) Init(serverUrl string, amqpUri string) {
 
 func (a *GDMClient) subscribe_to_queue(amqpUri string, queueName string) {
 	a.subsciber = util.AmqpSubscriber{}
-	a.subsciber.Init(amqpUri, queueName, a.handle_eta)  
+	a.subsciber.Init(amqpUri, queueName, a.handle_eta)
 }
 
 func (a *GDMClient) GetDM(data []byte, replyTo string, messageId string, correlationId string) {
@@ -134,15 +134,4 @@ func (a *GDMClient) handle_eta(deliveries <-chan amqp.Delivery, done chan error)
 	}
 	log.Printf("handle: deliveries channel closed")
 	done <- nil
-}
-
-func main() {
-	config := util.Config{}
-	config.Init()
-	amqp_config := config.AmqpConfig
-	amqp_uri := fmt.Sprintf("amqp://%s:%s@%s:%d/", amqp_config.UserName, amqp_config.Password, amqp_config.Host, amqp_config.Port)
-
-	dm_client := GDMClient{}
-	dm_client.Init("http://localhost:8085/test_distance", amqp_uri)
-	dm_client.subscribe_to_queue(amqp_uri, "elroy.eta.v0")
 }

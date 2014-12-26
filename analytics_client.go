@@ -2,17 +2,16 @@ package main
 
 import (
 	"bytes"
-	"log"
+	"fmt"
+	"github.com/streadway/amqp"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
-	"github.com/streadway/amqp"
-	"fmt"
-	"flywheel/util"
 )
 
 type AnalyticsClient struct {
-	url string
+	url    string
 	client http.Client
 }
 
@@ -44,15 +43,4 @@ func (a *AnalyticsClient) handle_analytics(deliveries <-chan amqp.Delivery, done
 	}
 	log.Printf("handle: deliveries channel closed")
 	done <- nil
-}
-
-func main_1() {
-	config := util.Config{}
-	config.Init()
-	amqp_config := config.AmqpConfig
-	amqp_uri := fmt.Sprintf("amqp://%s:%s@%s:%d/", amqp_config.UserName, amqp_config.Password, amqp_config.Host, amqp_config.Port)
-	analytics_client := AnalyticsClient{}
-	analytics_client.Init("http://localhost:8085/printEvents")
-	amqp_subscriber := util.AmqpSubscriber{}
-	amqp_subscriber.Init(amqp_uri, "elroy.analytics.v0", analytics_client.handle_analytics)	
 }
