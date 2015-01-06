@@ -1,0 +1,30 @@
+development:
+  key: xxxx
+  secret: xxxx
+  version: 0.1
+  url: http://localhost:8080/soap
+
+test:
+  key: xxxx
+  secret: xxxx
+  version: 0.1
+  url: http://localhost:8080/soap
+
+production:
+  key: xxxx
+  secret: xxxx
+  version: 0.1
+  url: http://localhost:8080/soap
+
+staging:
+  key: xxxx
+  secret: xxxx
+  version: 0.1
+  url: http://localhost:8080/soap
+
+acceptance:
+  key: xxxx
+  secret: xxxx
+  version: 0.1
+  url: http://localhost:8080/soap
+
