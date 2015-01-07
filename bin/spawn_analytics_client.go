@@ -5,6 +5,6 @@ import (
 )
 
 func main() {
-	cmd := exec.Command("./bin/metering")
+	cmd := exec.Command("./metering")
 	cmd.Start()
 }
