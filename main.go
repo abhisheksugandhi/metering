@@ -4,6 +4,8 @@ import (
 	"flag"
 	"flywheel/util"
 	"fmt"
+	"os"
+	"log"
 )
 
 func run_distance_matrix_client_service() {
@@ -29,15 +31,22 @@ func run_analytics_client_service() {
 }
 
 func main() {
+	file, err := os.OpenFile("log/metering.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err == nil {
+		log.SetOutput(file)
+	} else {
+		panic(err)
+	}
+
 	methodPtr := flag.String("method", "analytics_client", "method name")
 	flag.Parse()
-	fmt.Println("method:", *methodPtr)
+	log.Println("method:", *methodPtr)
 	var method = *methodPtr
 	if method == "distance_matrix_client" {
 		run_distance_matrix_client_service()
 	} else if method == "analytics_client" {
 		run_analytics_client_service()
 	} else {
-		fmt.Printf("please run using valid -method flag")
+		log.Printf("please run using valid -method flag")
 	}
 }
