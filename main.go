@@ -4,8 +4,8 @@ import (
 	"flag"
 	"flywheel/util"
 	"fmt"
-	"os"
 	"log"
+	"os"
 )
 
 func run_distance_matrix_client_service() {

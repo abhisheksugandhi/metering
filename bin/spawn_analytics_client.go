@@ -1,10 +1,10 @@
 package main
 
 import (
-     "os/exec"
+	"os/exec"
 )
 
 func main() {
-     cmd := exec.Command("./bin/metering")
-     cmd.Start()
+	cmd := exec.Command("./bin/metering")
+	cmd.Start()
 }
