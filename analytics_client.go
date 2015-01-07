@@ -30,8 +30,7 @@ type AnalyticsAPIConfig struct {
 	Version string
 }
 
-func (a *AnalyticsClient) Init(serverUrl string) {
-	a.url = serverUrl
+func (a *AnalyticsClient) Init() {
 	a.client = http.Client{}
 	a.readAnalyticsAPIConfig()
 }

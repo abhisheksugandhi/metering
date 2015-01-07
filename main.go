@@ -23,7 +23,7 @@ func run_analytics_client_service() {
 	amqp_config := config.AmqpConfig
 	amqp_uri := fmt.Sprintf("amqp://%s:%s@%s:%d/", amqp_config.UserName, amqp_config.Password, amqp_config.Host, amqp_config.Port)
 	analytics_client := AnalyticsClient{}
-	analytics_client.Init("http://localhost:8085/printEvents")
+	analytics_client.Init()
 	amqp_subscriber := util.AmqpSubscriber{}
 	amqp_subscriber.Init(amqp_uri, "elroy.analytics.v0", analytics_client.handle_analytics)
 }
