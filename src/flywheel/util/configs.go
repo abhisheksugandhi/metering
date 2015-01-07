@@ -42,7 +42,7 @@ func get_environment() string {
 }
 
 func (config *Config) init_db_config() {
-	data, err := ioutil.ReadFile("config/database.yml")
+	data, err := ioutil.ReadFile("../config/database.yml")
 	if err != nil {
 		panic(err)
 	}
@@ -53,7 +53,7 @@ func (config *Config) init_db_config() {
 }
 
 func (config *Config) init_api_config() {
-	data, err := ioutil.ReadFile("config/verifone_api_creds.yml")
+	data, err := ioutil.ReadFile("../config/verifone_api_creds.yml")
 	if err != nil {
 		panic(err)
 	}
@@ -64,7 +64,7 @@ func (config *Config) init_api_config() {
 }
 
 func (config *Config) init_amqp_config() {
-	data, err := ioutil.ReadFile("config/amqp.yml")
+	data, err := ioutil.ReadFile("../config/amqp.yml")
 	if err != nil {
 		panic(err)
 	}

@@ -41,7 +41,7 @@ func (a *AnalyticsClient) readAnalyticsAPIConfig() {
 		environment = "development"
 	}
 
-	data, err := ioutil.ReadFile("config/analytics_api.yml")
+	data, err := ioutil.ReadFile("../config/analytics_api.yml")
 	if err != nil {
 		panic(err)
 	}
